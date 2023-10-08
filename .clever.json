@@ -1,0 +1,11 @@
+{
+  "apps": [
+    {
+      "app_id": "app_4488bebf-61e7-4bfc-8da5-fb33a8ceebe5",
+      "org_id": "user_e1254cf8-e51e-4836-97ac-e8eb4c775ce0",
+      "deploy_url": "https://github.com/Xepobopa/tg-web-app-nestjs.git",
+      "name": "Omniforce-Asset-Store-Server",
+      "alias": "Omniforce-Asset-Store-Server"
+    }
+  ]
+}
