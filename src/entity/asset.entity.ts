@@ -23,7 +23,7 @@ export class AssetEntity extends AbstractEntity {
     @Column({ nullable: true })
     public file: string;
 
-    @ManyToOne(() => UserEntity)
+    @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
     @JoinColumn()
     public user: UserEntity;
 

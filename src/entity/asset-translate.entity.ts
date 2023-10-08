@@ -14,6 +14,6 @@ export class AssetTranslateEntity extends AbstractEntity {
     @Column()
     public desc: string;
 
-    @ManyToOne(() => AssetEntity, (assetTranslate) => assetTranslate.translations)
+    @ManyToOne(() => AssetEntity, (assetTranslate) => assetTranslate.translations, { onDelete: 'CASCADE' })
     public asset: AssetEntity;
 }
