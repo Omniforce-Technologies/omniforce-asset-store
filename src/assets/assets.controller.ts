@@ -37,12 +37,7 @@ import {PageDto} from "../dto/page.dto";
 import {FormDataStringPipe} from "../pipe/formData-string.pipe";
 
 @ApiTags('Asset')
-@ApiBearerAuth("access-token")
-@ApiUnauthorizedResponse({
-    description: "Your access token is not valid or expired."
-})
 @Controller('assets')
-@UseGuards(JwtUserGuard)
 export class AssetsController {
     constructor(private readonly assetsService: AssetsService, private readonly jwtService: JwtService) {
     }
@@ -76,6 +71,11 @@ export class AssetsController {
             },
         },
     })
+    @ApiBearerAuth("access-token")
+    @ApiUnauthorizedResponse({
+        description: "Your access token is not valid or expired."
+    })
+    @UseGuards(JwtUserGuard)
     @ApiBadRequestResponse({description: "Provided data is not valid. Data must be like an CreateAssetDto. Check if user with provided if exist"})
     @Post('/create/:userUUID')
     async createAsset(
@@ -105,6 +105,11 @@ export class AssetsController {
         return asset;
     }
 
+    @ApiBearerAuth("access-token")
+    @ApiUnauthorizedResponse({
+        description: "Your access token is not valid or expired."
+    })
+    @UseGuards(JwtUserGuard)
     @ApiOperation({summary: "Delete an asset with provided 'uuid'"})
     @ApiOkResponse({description: "Asset with provided 'uuid' has been deleted", type: Number})
     @ApiBadRequestResponse({description: "Can't find asset with provided 'uuid'"})
