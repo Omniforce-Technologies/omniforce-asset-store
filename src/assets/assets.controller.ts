@@ -3,18 +3,17 @@ import {
     Controller,
     Delete,
     Get,
-    HttpStatus,
     Param,
-    ParseFilePipeBuilder,
     Post,
-    Query, UploadedFile,
+    Query,
+    Req,
     UploadedFiles,
     UseGuards,
     UseInterceptors
 } from '@nestjs/common';
 import {AssetsService} from './assets.service';
 import {CreateAssetDto} from "../dto/asset/create-asset.dto";
-import {FileFieldsInterceptor, FileInterceptor, FilesInterceptor} from "@nestjs/platform-express";
+import {FileFieldsInterceptor} from "@nestjs/platform-express";
 import {JwtUserGuard} from "../authorization/auth.guard";
 import {
     ApiBadRequestResponse,
@@ -30,6 +29,12 @@ import {
 import {AssetDto} from "../dto/asset/asset.dto";
 import {AssetQueryDto} from "../dto/asset/asset-query.dto";
 import {AssetResponseDto} from "../dto/response/asset.dto";
+import {JwtService} from "@nestjs/jwt";
+import {Request} from "express";
+import {PageOptionsDto} from "../dto/page-option.dto";
+import {AssetEntity} from "../entity/asset.entity";
+import {PageDto} from "../dto/page.dto";
+import {FormDataStringPipe} from "../pipe/formData-string.pipe";
 
 @ApiTags('Asset')
 @ApiBearerAuth("access-token")
@@ -39,7 +44,7 @@ import {AssetResponseDto} from "../dto/response/asset.dto";
 @Controller('assets')
 @UseGuards(JwtUserGuard)
 export class AssetsController {
-    constructor(private readonly assetsService: AssetsService) {
+    constructor(private readonly assetsService: AssetsService, private readonly jwtService: JwtService) {
     }
 
     @ApiOperation({summary: "Create a new asset"})
@@ -49,8 +54,8 @@ export class AssetsController {
     })
     @ApiConsumes('multipart/form-data')
     @UseInterceptors(FileFieldsInterceptor([
-        { name: 'pictures', maxCount: 1 },
-        { name: 'file' },
+        {name: 'pictures', maxCount: 10},
+        {name: 'file'},
     ]))
     @ApiBody({
         schema: {
@@ -75,22 +80,19 @@ export class AssetsController {
     @Post('/create/:userUUID')
     async createAsset(
         @Param('userUUID') userUUID: string,
-        @Body() newAsset: CreateAssetDto,
-        @UploadedFiles() files: { pictures: Express.Multer.File[], file: Express.Multer.File }
+        @Body(FormDataStringPipe) newAsset: CreateAssetDto,
+        @UploadedFiles()
+            files: { pictures: Express.Multer.File[]; file: Express.Multer.File },
     ) {
-        console.log("Create Asset")
         const asset = await this.assetsService.createAsset(newAsset, userUUID);
-        console.log("Set File")
         await this.assetsService.setFile(asset.uuid, files.file[0]);
-        console.log("Set Picture")
         await this.assetsService.setPictures(asset.uuid, files.pictures);
-        console.log("Get Asset")
         return await this.getAsset(asset.uuid);
     }
 
     @Get('get')
-    async getAssetsByQuery(@Query() query: AssetQueryDto) {
-        return await this.assetsService.getAssetByQuery(query);
+    async getAssetsByQuery(@Query() query: AssetQueryDto, @Query() pageOptionsDto: PageOptionsDto) {
+        return await this.assetsService.getAssetByQuery(query, pageOptionsDto) as PageDto<AssetEntity>;
     }
 
     @ApiOperation({summary: "Return an asset with provided 'uuid'"})
@@ -107,7 +109,9 @@ export class AssetsController {
     @ApiOkResponse({description: "Asset with provided 'uuid' has been deleted", type: Number})
     @ApiBadRequestResponse({description: "Can't find asset with provided 'uuid'"})
     @Delete(':uuid')
-    async deleteAsset(@Param('uuid') uuid: string) {
-        return await this.assetsService.deleteUser(uuid);
+    async deleteAsset(@Param('uuid') uuid: string, @Req() req: Request) {
+        const token = req.headers.authorization.replace('Bearer ', '');
+        const sub = this.jwtService.decode(token).sub;
+        return await this.assetsService.deleteUser(uuid, sub);
     }
 }

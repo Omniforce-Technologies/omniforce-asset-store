@@ -4,9 +4,12 @@ import {Repository} from "typeorm";
 import {AssetEntity} from "../entity/asset.entity";
 import {CreateAssetDto} from "../dto/asset/create-asset.dto";
 import {UsersService} from "../users/users.service";
-import {AssetBasicQuery, AssetQueryDto, AssetTranslateQuery} from "../dto/asset/asset-query.dto";
+import {AssetQueryDto} from "../dto/asset/asset-query.dto";
 import {UploadService} from "../upload/upload.service";
 import {AssetTranslateEntity} from "../entity/asset-translate.entity";
+import {PageDto} from "../dto/page.dto";
+import {PageMetaDto} from "../dto/page-meta.dto";
+import {PageOptionsDto} from "../dto/page-option.dto";
 
 @Injectable()
 export class AssetsService {
@@ -20,53 +23,56 @@ export class AssetsService {
 
     async createAsset(newAsset: CreateAssetDto, userUUID: string) {
         const user = await this.userService.getUserByUuid(userUUID);
-        const userTrans: AssetTranslateEntity[] =
-            newAsset.lang.map(value => {
-                const newUserTrans = new AssetTranslateEntity();
-                newUserTrans.language = value.language;
-                newUserTrans.title = value.title;
-                newUserTrans.desc = value.desc;
-                return newUserTrans;
-            });
+
+        const userTrans: AssetTranslateEntity[] = newAsset.lang.map((value) => {
+            const newUserTrans = new AssetTranslateEntity();
+            newUserTrans.language = value.language;
+            newUserTrans.title = value.title;
+            newUserTrans.desc = value.desc;
+            return newUserTrans;
+        });
         const asset = new AssetEntity();
         asset.user = user;
         asset.translations = userTrans;
         asset.price = newAsset.price;
-        console.log(asset);
         return await this.assetRepository.save(asset);
     }
 
     async setPictures(uuid: string, pictures: Array<Express.Multer.File>) {
-        const urls: string[] = []
+        const urls: string[] = [];
         for (const pic of pictures) {
-            urls.push(await this.uploadService.uploadAsset(`${uuid}+${pic.originalname}`, pic.buffer))
+            urls.push(
+                await this.uploadService.uploadAsset(
+                    `${uuid}+${pic.originalname}`,
+                    pic.buffer,
+                ),
+            );
         }
 
         await this.assetRepository
             .createQueryBuilder()
             .update()
             .set({
-                pictures: urls
+                pictures: urls,
             })
-            .where(
-                "uuid = :uuid",
-                {uuid}
-            )
+            .where('uuid = :uuid', { uuid })
             .execute();
     }
 
     async setFile(uuid: string, file: Express.Multer.File) {
-        const url = await this.uploadService.uploadAsset(`file:${uuid}_${file.originalname}`, file.buffer);
+        const buffer = file.buffer;
+
+        const url = await this.uploadService.uploadAsset(
+            `file:${uuid}_${file.originalname}`,
+            buffer,
+        );
         await this.assetRepository
             .createQueryBuilder()
             .update()
             .set({
-                file: url
+                file: url,
             })
-            .where(
-                "uuid = :uuid",
-                {uuid}
-            )
+            .where('uuid = :uuid', { uuid })
             .execute();
     }
 
@@ -74,34 +80,48 @@ export class AssetsService {
         return await this.assetRepository.findOneOrFail({where: {uuid}, relations: ['user', 'translations']});
     }
 
-    async getAssetByQuery(query: AssetQueryDto) {
-        console.log(query)
+    async getAssetByQuery(query: AssetQueryDto, pageOptionsDto?: PageOptionsDto) {
         const queryBuilder = this.assetRepository.createQueryBuilder('asset');
         queryBuilder.leftJoinAndSelect('asset.translations', 'translations');
         queryBuilder.leftJoinAndSelect('asset.user', 'user');
-        queryBuilder.leftJoinAndSelect('user.translations', 'translationsUser');
 
         const assetsFields = ['price', 'rating', 'uuid', 'id'];
+        const translationsFields = ['title', 'desc', 'language'];
 
         for (const param in query) {
             if (assetsFields.includes(param)) {
                 queryBuilder.andWhere(`asset.${param} = :${param}`, {[param]: query[param]});
-            }
-            else if (param === 'userUuid') {
+            } else if (param === 'userUuid') {
                 queryBuilder.andWhere(`user.uuid = :uuid`, {uuid: query[param]});
-            }
-            else {
+            } else if (translationsFields.includes(param)) {
                 queryBuilder.andWhere(`translations.${param} = :${param}`, {[param]: query[param]});
                 queryBuilder.andWhere(`translationsUser.${param} = :${param}`, {[param]: query[param]});
             }
         }
-        return await queryBuilder.getMany();
+        if (!pageOptionsDto)
+            return await queryBuilder.getMany();
+
+        queryBuilder
+            .orderBy("asset.createdAt", pageOptionsDto.order)
+            .skip((pageOptionsDto.page - 1) * pageOptionsDto.take)
+            .take(pageOptionsDto.take);
+        const itemCount = await queryBuilder.getCount();
+        const meta = new PageMetaDto({ itemCount, pageOptionsDto });
+        const { entities } = await queryBuilder.getRawAndEntities();
+        console.log(entities.length);
+        return new PageDto(entities, meta);
     }
 
-    async deleteUser(uuid: string) {
-        const res = await this.assetRepository.delete({uuid});
+    async deleteUser(uuid: string, sub: string) {
+        const user = await this.userService.getUserBySub(sub);
+        const assets = await this.getAssetByQuery({userUuid: user.uuid}) as AssetEntity[];
 
+        const assetToDelete = assets.find(value => value.uuid === uuid);
+        if (!assetToDelete) throw new BadRequestException("Given user doesn't have the given asset!");
+
+        const res = await this.assetRepository.delete({uuid});
         if (res.affected === 0) throw new BadRequestException(`Can't find user with id "${uuid}"`);
+
         return res.affected;
     }
 }
