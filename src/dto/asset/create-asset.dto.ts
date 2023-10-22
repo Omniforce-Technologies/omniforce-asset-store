@@ -3,7 +3,7 @@ import {AssetDto} from "./asset.dto";
 import {AssetTranslateDto} from "./asset-translate.dto";
 
 class Translate {
-    lang: AssetTranslateDto[];
+    lang: AssetTranslateDto[] | string[];
 }
 
 export class CreateAssetDto extends IntersectionType(

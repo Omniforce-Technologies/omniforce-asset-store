@@ -34,7 +34,6 @@ import {Request} from "express";
 import {PageOptionsDto} from "../dto/page-option.dto";
 import {AssetEntity} from "../entity/asset.entity";
 import {PageDto} from "../dto/page.dto";
-import {FormDataStringPipe} from "../pipe/formData-string.pipe";
 
 @ApiTags('Asset')
 @Controller('assets')
@@ -80,7 +79,7 @@ export class AssetsController {
     @Post('/create/:userUUID')
     async createAsset(
         @Param('userUUID') userUUID: string,
-        @Body(FormDataStringPipe) newAsset: CreateAssetDto,
+        @Body() newAsset: CreateAssetDto,
         @UploadedFiles()
             files: { pictures: Express.Multer.File[]; file: Express.Multer.File },
     ) {

@@ -25,16 +25,18 @@ export class AssetsService {
         const user = await this.userService.getUserByUuid(userUUID);
 
         const userTrans: AssetTranslateEntity[] = newAsset.lang.map((value) => {
+            const obj = JSON.parse(value as unknown as string);
             const newUserTrans = new AssetTranslateEntity();
-            newUserTrans.language = value.language;
-            newUserTrans.title = value.title;
-            newUserTrans.desc = value.desc;
+            newUserTrans.language = obj.language;
+            newUserTrans.title = obj.title;
+            newUserTrans.desc = obj.desc;
             return newUserTrans;
         });
         const asset = new AssetEntity();
         asset.user = user;
         asset.translations = userTrans;
         asset.price = newAsset.price;
+        asset.discount = newAsset?.discount;
         return await this.assetRepository.save(asset);
     }
 
