@@ -97,7 +97,6 @@ export class AssetsService {
                 queryBuilder.andWhere(`user.uuid = :uuid`, {uuid: query[param]});
             } else if (translationsFields.includes(param)) {
                 queryBuilder.andWhere(`translations.${param} = :${param}`, {[param]: query[param]});
-                queryBuilder.andWhere(`translationsUser.${param} = :${param}`, {[param]: query[param]});
             }
         }
         if (!pageOptionsDto)
