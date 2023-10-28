@@ -25,7 +25,11 @@ export class AssetsService {
         const user = await this.userService.getUserByUuid(userUUID);
 
         const userTrans: AssetTranslateEntity[] = newAsset.lang.map((value) => {
-            const obj = JSON.parse(value as unknown as string);
+            let obj;
+            if (value instanceof String)
+                JSON.parse(value as unknown as string);
+            else
+                obj = value;
             const newUserTrans = new AssetTranslateEntity();
             newUserTrans.language = obj.language;
             newUserTrans.title = obj.title;
@@ -89,18 +93,35 @@ export class AssetsService {
 
         const assetsFields = ['price', 'rating', 'uuid', 'id'];
         const translationsFields = ['title', 'desc', 'language'];
+        const pageFields = ['take', 'skip'];
 
         for (const param in query) {
             if (assetsFields.includes(param)) {
                 queryBuilder.andWhere(`asset.${param} = :${param}`, {[param]: query[param]});
             } else if (param === 'userUuid') {
                 queryBuilder.andWhere(`user.uuid = :uuid`, {uuid: query[param]});
+            } else if (param === 'discount' && query[param] === true) {
+                queryBuilder.andWhere(`asset.discount != :discount`, { discount: 0 })
+            } else if (param === 'orderBy') {
+                queryBuilder.orderBy(`asset.${query[param]}`, pageOptionsDto.order)
             } else if (translationsFields.includes(param)) {
                 queryBuilder.andWhere(`translations.${param} = :${param}`, {[param]: query[param]});
             }
         }
-        if (!pageOptionsDto)
+
+        if (query['minPrice'] || query['maxPrice']) {
+            if (!query['minPrice'])
+                query['minPrice'] = 0;
+            if (!query['maxPrice'])
+                query['maxPrice'] = Number.MAX_VALUE;
+
+            queryBuilder.andWhere(`asset.price <= :maxPriceParam`, { maxPriceParam: query['maxPrice'] });
+            queryBuilder.andWhere(`asset.price >= :minPriceParam`, { minPriceParam: query['minPrice'] });
+        }
+
+        if(!pageFields.some(field => field in pageOptionsDto)) {
             return await queryBuilder.getMany();
+        }
 
         queryBuilder
             .orderBy("asset.createdAt", pageOptionsDto.order)

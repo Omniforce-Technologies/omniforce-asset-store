@@ -37,6 +37,18 @@ export class AssetDto extends AbstractDto {
     translateId: number;
 
     @ApiProperty({
+        description: "Likes of an asset",
+        title: "Likes",
+        type: Number,
+        required: false,
+        example: 1488,
+    })
+    @IsOptional()
+    @Transform(({ value }) => Number(value))
+    @IsNumber()
+    likesId: number;
+
+    @ApiProperty({
         description: "The rating of an asset (from 0 to 5.0)",
         title: "Rating",
         type: Number,
@@ -47,18 +59,6 @@ export class AssetDto extends AbstractDto {
     @Transform(({ value }) => Number(value))
     @IsNumber()
     rating: number;
-
-    @ApiProperty({
-        description: "Likes of an asset",
-        title: "Likes",
-        type: Number,
-        required: false,
-        example: 1488,
-    })
-    @IsOptional()
-    @Transform(({ value }) => Number(value))
-    @IsNumber()
-    likes: number;
 
     @ApiProperty({
         description: "The pictures (quick view) of an asset",

@@ -12,21 +12,18 @@ export class AssetEntity extends AbstractEntity {
     public rating: number;
 
     @Column({default: 0})
-    public likes: number;
-
-    @Column({default: 0})
     public discount: number;
 
     @Column('simple-array', {nullable: true, default: []})
     public pictures: Array<string>;
 
-    @Column({ nullable: true })
+    @Column({nullable: true})
     public file: string;
 
-    @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+    @ManyToOne(() => UserEntity, {onDelete: 'CASCADE'})
     @JoinColumn()
     public user: UserEntity;
 
-    @OneToMany(() => AssetTranslateEntity, (assetTranslate) => assetTranslate.asset, { cascade: true })
+    @OneToMany(() => AssetTranslateEntity, (assetTranslate) => assetTranslate.asset, {cascade: true})
     public translations: AssetTranslateEntity[];
 }
