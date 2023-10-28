@@ -87,7 +87,7 @@ export class UsersController {
         @UploadedFile(
             new ParseFilePipeBuilder()
                 .addFileTypeValidator({
-                    fileType: /(jpg|jpeg|png|gif)$/,
+                    fileType: '.(png|jpeg|jpg)',
                 })
                 .addMaxSizeValidator({
                     maxSize: 2 * 1000 * 1000
@@ -96,7 +96,7 @@ export class UsersController {
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY
                 })
         ) avatar: Express.Multer.File) {
-        console.log(newUser)
+        console.log("avatar => ", avatar);
         const token = req.headers.authorization.replace('Bearer ', '');
         const sub = this.jwtService.decode(token).sub;
         const user = await this.usersService.create(newUser, sub);
@@ -135,7 +135,7 @@ export class UsersController {
         @UploadedFile(
             new ParseFilePipeBuilder()
                 .addFileTypeValidator({
-                    fileType: /(jpg|jpeg|png|gif)$/
+                    fileType:  /\.(jpg|jpeg|png)$/
                 })
                 .addMaxSizeValidator({
                     maxSize: 2 * 1000 * 1000
@@ -145,7 +145,6 @@ export class UsersController {
                 })
         ) avatar: Express.Multer.File
     ) {
-        console.log(avatar);
         return await this.usersService.setAvatar(uuid, avatar.originalname, avatar.buffer);
     }
 
