@@ -27,7 +27,7 @@ export class AssetsService {
         const userTrans: AssetTranslateEntity[] = newAsset.lang.map((value) => {
             let obj;
             if (value instanceof String)
-                JSON.parse(value as unknown as string);
+                obj = JSON.parse(value as unknown as string);
             else
                 obj = value;
             const newUserTrans = new AssetTranslateEntity();
