@@ -120,11 +120,12 @@ export class AssetsService {
         }
 
         if(!pageFields.some(field => field in pageOptionsDto)) {
+            console.log("page fields false")
             return await queryBuilder.getMany();
         }
 
+        console.log("page fields true")
         queryBuilder
-            .orderBy("asset.createdAt", pageOptionsDto.order)
             .skip((pageOptionsDto.page - 1) * pageOptionsDto.take)
             .take(pageOptionsDto.take);
         const itemCount = await queryBuilder.getCount();
