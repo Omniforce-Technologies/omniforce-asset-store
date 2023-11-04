@@ -135,7 +135,7 @@ export class UsersController {
         @UploadedFile(
             new ParseFilePipeBuilder()
                 .addFileTypeValidator({
-                    fileType:  /\.(jpg|jpeg|png)$/
+                    fileType:  '.(png|jpeg|jpg)'
                 })
                 .addMaxSizeValidator({
                     maxSize: 2 * 1000 * 1000
@@ -145,7 +145,8 @@ export class UsersController {
                 })
         ) avatar: Express.Multer.File
     ) {
-        return await this.usersService.setAvatar(uuid, avatar.originalname, avatar.buffer);
+        await this.usersService.setAvatar(uuid, avatar.originalname, avatar.buffer);
+        return await this.usersService.getUserByUuid(uuid);
     }
 
     @ApiOperation({summary: "Return a user with provided 'uuid'"})
