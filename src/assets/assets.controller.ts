@@ -2,18 +2,18 @@ import {
     Body,
     Controller,
     Delete,
-    Get,
-    Param,
+    Get, HttpStatus, NestInterceptor,
+    Param, ParseFilePipeBuilder,
     Post,
     Query,
-    Req,
+    Req, UploadedFile,
     UploadedFiles,
     UseGuards,
     UseInterceptors
 } from '@nestjs/common';
 import {AssetsService} from './assets.service';
 import {CreateAssetDto} from "../dto/asset/create-asset.dto";
-import {FileFieldsInterceptor} from "@nestjs/platform-express";
+import {FileFieldsInterceptor, FileInterceptor, FilesInterceptor} from "@nestjs/platform-express";
 import {JwtUserGuard} from "../authorization/auth.guard";
 import {
     ApiBadRequestResponse,
@@ -117,5 +117,55 @@ export class AssetsController {
         const token = req.headers.authorization.replace('Bearer ', '');
         const sub = this.jwtService.decode(token).sub;
         return await this.assetsService.deleteUser(uuid, sub);
+    }
+
+    @ApiOperation({summary: "Delete a photo from asset with provided asset 'uuid'"})
+    @ApiOkResponse({description: "Asset's photo has been deleted with provided asset 'uuid'", type: AssetDto})
+    @ApiBadRequestResponse({description: "Can't find asset with provided 'uuid'"})
+    @ApiBearerAuth("access-token")
+    @ApiUnauthorizedResponse({
+        description: "Your access token is not valid or expired."
+    })
+    @UseGuards(JwtUserGuard)
+    @Delete('photo/:assetUuid/:photoUuid')
+    async deletePhoto(
+        @Param('assetUuid') assetUuid: string,
+        @Param('photoUuid') photoUuid: string,
+        @Req() req: Request)
+    {
+        const token = req.headers.authorization.replace('Bearer ', '');
+        const sub = this.jwtService.decode(token).sub;
+        return await this.assetsService.deletePhoto(assetUuid, photoUuid, sub);
+    }
+
+    @ApiOperation({summary: "Add photos from asset with provided asset 'uuid'"})
+    @ApiOkResponse({description: "Asset's photo has been deleted with provided asset 'uuid'", type: AssetDto})
+    @ApiBadRequestResponse({description: "Can't find asset with provided 'uuid'"})
+    @ApiBearerAuth("access-token")
+    @ApiUnauthorizedResponse({
+        description: "Your access token is not valid or expired."
+    })
+    @UseGuards(JwtUserGuard)
+    @UseInterceptors(FilesInterceptor('newPhotos') as unknown as NestInterceptor)
+    @Post('addPhotos/:assetUuid')
+    async addPhoto(
+        @Param('assetUuid') assetUuid: string,
+        @UploadedFiles(
+            new ParseFilePipeBuilder()
+                .addFileTypeValidator({
+                    fileType: '.(png|jpeg|jpg)',
+                })
+                .addMaxSizeValidator({
+                    maxSize: 2 * 1000 * 1000
+                })
+                .build({
+                    errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY
+                })
+        ) newPhotos: Array<Express.Multer.File>,
+        @Req() req: Request)
+    {
+        const token = req.headers.authorization.replace('Bearer ', '');
+        const sub = this.jwtService.decode(token).sub;
+        return await this.assetsService.addPhotos(assetUuid, sub, newPhotos);
     }
 }

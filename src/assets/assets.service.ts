@@ -10,6 +10,7 @@ import {AssetTranslateEntity} from "../entity/asset-translate.entity";
 import {PageDto} from "../dto/page.dto";
 import {PageMetaDto} from "../dto/page-meta.dto";
 import {PageOptionsDto} from "../dto/page-option.dto";
+import {ConfigService} from "@nestjs/config";
 
 @Injectable()
 export class AssetsService {
@@ -18,6 +19,7 @@ export class AssetsService {
         @InjectRepository(AssetTranslateEntity) private assetTranslateEntity: Repository<AssetTranslateEntity>,
         private readonly userService: UsersService,
         private readonly uploadService: UploadService,
+        private readonly configService: ConfigService,
     ) {
     }
 
@@ -120,18 +122,16 @@ export class AssetsService {
         }
 
         if(!pageFields.some(field => field in pageOptionsDto)) {
-            console.log("page fields false")
             return await queryBuilder.getMany();
         }
 
-        console.log("page fields true")
         queryBuilder
             .skip((pageOptionsDto.page - 1) * pageOptionsDto.take)
             .take(pageOptionsDto.take);
         const itemCount = await queryBuilder.getCount();
         const meta = new PageMetaDto({ itemCount, pageOptionsDto });
         const { entities } = await queryBuilder.getRawAndEntities();
-        console.log(entities.length);
+
         return new PageDto(entities, meta);
     }
 
@@ -140,11 +140,48 @@ export class AssetsService {
         const assets = await this.getAssetByQuery({userUuid: user.uuid}) as AssetEntity[];
 
         const assetToDelete = assets.find(value => value.uuid === uuid);
-        if (!assetToDelete) throw new BadRequestException("Given user doesn't have the given asset!");
+        if (!assetToDelete) throw new BadRequestException("Given user doesn't own given asset!");
 
         const res = await this.assetRepository.delete({uuid});
         if (res.affected === 0) throw new BadRequestException(`Can't find user with id "${uuid}"`);
 
         return res.affected;
+    }
+
+    async deletePhoto(assetUuid: string, photoUuid: string, sub: string) {
+        const photoUrl = `${this.configService.get<string>('AWS_ASSET_BUCKET')}.${this.configService.get<string>('AWS_HOST')}/${photoUuid}`
+        const user = await this.userService.getUserBySub(sub);
+        const asset = await this.getAsset(assetUuid);
+
+        if (!(asset.user.uuid === user.uuid))
+            throw new BadRequestException("Given user doesn't own given asset!");
+
+        const photoDeleteIndex = asset.pictures.findIndex(pic => pic === photoUrl);
+        asset.pictures = asset.pictures.splice(photoDeleteIndex, 1);
+        return await this.assetRepository.save(asset)
+    }
+
+    async addPhotos(
+        assetUuid: string,
+        sub: string,
+        pictures: Array<Express.Multer.File>) {
+        const user = await this.userService.getUserBySub(sub);
+        const asset = await this.getAsset(assetUuid);
+
+        if (!(asset.user.uuid === user.uuid))
+            throw new BadRequestException("Given user doesn't own given asset!");
+
+        const urls: string[] = [];
+        for (const pic of pictures) {
+            urls.push(
+                await this.uploadService.uploadAsset(
+                    `${assetUuid}+${pic.originalname}`,
+                    pic.buffer,
+                ),
+            );
+        }
+
+        asset.pictures = asset.pictures.concat(urls);
+        return await this.assetRepository.save(asset);
     }
 }
